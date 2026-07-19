@@ -24,9 +24,14 @@ export function LandingNav() {
           <a href="#features">Features</a>
           <a href="#how-it-works">How it works</a>
         </nav>
-        <Link to="/home" className="btn btn-primary nav-cta">
-          Open dashboard
-        </Link>
+        <div className="nav-auth">
+          <Link to="/login" className="btn btn-ghost nav-cta">
+            Log in
+          </Link>
+          <Link to="/signup" className="btn btn-primary nav-cta">
+            Sign up
+          </Link>
+        </div>
       </div>
     </header>
   )
@@ -43,6 +48,16 @@ export function AppNav() {
         <Link to="/" className="btn btn-ghost nav-cta">
           Back to site
         </Link>
+      </div>
+    </header>
+  )
+}
+
+export function AuthNav() {
+  return (
+    <header className="nav">
+      <div className="container nav-inner">
+        <Logo />
       </div>
     </header>
   )

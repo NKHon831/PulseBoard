@@ -53,6 +53,12 @@
   font-size: 15px;
 }
 
+.nav-auth {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 @media (max-width: 720px) {
   .nav-links a:not(.nav-current) {
     display: none;

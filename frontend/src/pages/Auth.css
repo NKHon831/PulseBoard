@@ -1,0 +1,142 @@
+.auth-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-block: 48px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: var(--shadow);
+}
+
+.auth-head {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.auth-head h1 {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.auth-sub {
+  font-size: 15px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.field input {
+  font: inherit;
+  font-size: 15px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent-border);
+    box-shadow: 0 0 0 3px var(--accent-bg);
+  }
+}
+
+.field-error input {
+  border-color: #e5484d;
+}
+
+.field-error-msg {
+  font-size: 13px;
+  color: #e5484d;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.field-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.field-check input {
+  accent-color: var(--accent);
+}
+
+.auth-link {
+  font-size: 14px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    color: var(--accent-h);
+  }
+}
+
+.auth-submit {
+  margin-top: 4px;
+  width: 100%;
+}
+
+.auth-error {
+  font-size: 14px;
+  color: #e5484d;
+  background: rgba(229, 72, 77, 0.1);
+  border: 1px solid rgba(229, 72, 77, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.auth-foot {
+  text-align: center;
+  font-size: 14px;
+  margin-top: 24px;
+}
