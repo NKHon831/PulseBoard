@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../lib/auth'
 import './NavBar.css'
 
 function Logo() {
@@ -38,16 +39,30 @@ export function LandingNav() {
 }
 
 export function AppNav() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { logout } = useAuth()
+
+  function handleLogout() {
+    logout()
+    navigate('/login')
+  }
+
   return (
     <header className="nav">
       <div className="container nav-inner">
         <Logo />
         <nav className="nav-links">
-          <span className="nav-current">Overview</span>
+          <Link to="/home" className={location.pathname === '/home' ? 'nav-current' : undefined}>
+            Overview
+          </Link>
+          <Link to="/expenses" className={location.pathname === '/expenses' ? 'nav-current' : undefined}>
+            Expenses
+          </Link>
         </nav>
-        <Link to="/" className="btn btn-ghost nav-cta">
-          Back to site
-        </Link>
+        <button type="button" className="btn btn-ghost nav-cta" onClick={handleLogout}>
+          Log out
+        </button>
       </div>
     </header>
   )
