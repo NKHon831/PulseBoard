@@ -2,13 +2,24 @@ spring:
   application:
     name: PulseBoard
   datasource:
-    url: ${DB_URL:jdbc:postgresql://aws-0-<region>.pooler.supabase.com:5432/postgres}
+    url: ${DB_URL:jdbc:postgresql://aws-0-<region>.pooler.supabase.com:5432/postgres?currentSchema=core}
     username: ${DB_USERNAME:postgres.<project-ref>}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   flyway:
     locations: classpath:db/migration
     baseline-on-migrate: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
 
 server:
   port: ${PORT:8000}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS}
+  cors:
+    frontend-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
