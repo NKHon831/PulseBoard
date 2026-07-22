@@ -171,3 +171,12 @@ code {
     background: var(--accent-bg);
   }
 }
+
+.btn-danger {
+  background: #e5484d;
+  color: #fff;
+
+  &:hover {
+    background: #d33a3f;
+  }
+}

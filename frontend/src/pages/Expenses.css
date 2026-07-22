@@ -134,6 +134,33 @@
   font-size: 14px;
 }
 
+.expense-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.expense-day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 2px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.expense-day-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.expense-day-total {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
 .expense-list {
   list-style: none;
   margin: 0;
@@ -177,12 +204,6 @@
   color: var(--text-h);
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.expense-date {
-  font-size: 13px;
-  color: var(--text);
   white-space: nowrap;
 }
 

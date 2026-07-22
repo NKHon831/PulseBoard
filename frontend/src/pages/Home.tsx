@@ -1,32 +1,9 @@
-import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { AppNav } from '../components/NavBar'
+import { useAuth } from '../lib/auth'
+import { useExpenses, groupByDay } from '../lib/expenses'
+import { formatAmount, formatDate, todayStr } from '../lib/format'
 import './Home.css'
-
-type Habit = { id: string; label: string; done: boolean }
-
-const INITIAL_HABITS: Habit[] = [
-  { id: 'run', label: 'Morning run', done: true },
-  { id: 'read', label: 'Read 20 pages', done: true },
-  { id: 'water', label: 'Drink 2L of water', done: true },
-  { id: 'meditate', label: 'Meditate 10 min', done: false },
-  { id: 'journal', label: 'Journal', done: false },
-]
-
-const WEEK = [
-  { day: 'Mon', value: 60 },
-  { day: 'Tue', value: 80 },
-  { day: 'Wed', value: 45 },
-  { day: 'Thu', value: 90 },
-  { day: 'Fri', value: 70 },
-  { day: 'Sat', value: 55 },
-  { day: 'Sun', value: 40 },
-]
-
-const GOALS = [
-  { label: 'Run 100km this month', progress: 62 },
-  { label: 'Read 6 books this quarter', progress: 33 },
-  { label: '30-day meditation streak', progress: 80 },
-]
 
 function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
@@ -39,14 +16,19 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint: 
 }
 
 function Home() {
-  const [habits, setHabits] = useState(INITIAL_HABITS)
-  const done = habits.filter((h) => h.done).length
+  const { user } = useAuth()
+  const { expenses, loading } = useExpenses()
 
-  function toggle(id: string) {
-    setHabits((hs) => hs.map((h) => (h.id === id ? { ...h, done: !h.done } : h)))
-  }
+  const today = todayStr()
+  const monthPrefix = today.slice(0, 7)
 
-  const today = new Date().toLocaleDateString(undefined, {
+  const todayTotal = expenses.filter((e) => e.expenseDate === today).reduce((sum, e) => sum + e.amount, 0)
+  const monthExpenses = expenses.filter((e) => e.expenseDate.startsWith(monthPrefix))
+  const monthTotal = monthExpenses.reduce((sum, e) => sum + e.amount, 0)
+  const recentDays = groupByDay(expenses).slice(0, 4)
+
+  const firstName = user?.name.split(' ')[0] ?? ''
+  const dateLabel = new Date().toLocaleDateString(undefined, {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
@@ -59,78 +41,61 @@ function Home() {
       <div className="container dashboard">
         <div className="dash-head">
           <div>
-            <h1 className="dash-title">Welcome back</h1>
-            <p className="dash-date">{today}</p>
+            <h1 className="dash-title">Welcome back{firstName && `, ${firstName}`}</h1>
+            <p className="dash-date">{dateLabel}</p>
           </div>
-          <span className="streak-badge">🔥 12 day streak</span>
         </div>
 
         <div className="stat-grid">
-          <StatCard label="Today's progress" value={`${done}/${habits.length}`} hint="habits completed" />
-          <StatCard label="Current streak" value="12 days" hint="personal best: 21" />
-          <StatCard label="Weekly goal" value="68%" hint="on track" />
-          <StatCard label="Avg. mood" value="4.2/5" hint="last 7 days" />
+          <StatCard label="Today" value={formatAmount(todayTotal)} hint="spent so far" />
+          <StatCard label="This month" value={formatAmount(monthTotal)} hint={`${monthExpenses.length} entries`} />
+          <StatCard label="Total logged" value={String(expenses.length)} hint="all-time entries" />
         </div>
 
         <div className="dash-grid">
-          <section className="panel">
-            <h2 className="panel-title">Today's habits</h2>
-            <ul className="habit-list">
-              {habits.map((h) => (
-                <li key={h.id}>
-                  <button
-                    type="button"
-                    className={`habit-item${h.done ? ' done' : ''}`}
-                    onClick={() => toggle(h.id)}
-                    aria-pressed={h.done}
-                  >
-                    <span className="habit-check" aria-hidden="true">
-                      {h.done && (
-                        <svg viewBox="0 0 16 16" width="11" height="11">
-                          <path
-                            d="M3 8.5l3 3 7-7.5"
-                            fill="none"
-                            stroke="#fff"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
-                    </span>
-                    {h.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
+          <section className="panel panel-wide">
+            <div className="panel-head">
+              <h2 className="panel-title">Expenses summary</h2>
+              <Link to="/expenses" className="panel-link">
+                View all
+              </Link>
+            </div>
+
+            {loading ? (
+              <p className="summary-empty">Loading…</p>
+            ) : recentDays.length === 0 ? (
+              <p className="summary-empty">No expenses logged yet.</p>
+            ) : (
+              <ul className="day-summary-list">
+                {recentDays.map((group) => (
+                  <li className="day-summary-row" key={group.date}>
+                    <span className="day-summary-date">{formatDate(group.date)}</span>
+                    <span className="day-summary-total">{formatAmount(group.total)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
-          <section className="panel">
-            <h2 className="panel-title">This week</h2>
-            <div className="week-chart">
-              {WEEK.map((d) => (
-                <div className="week-col" key={d.day}>
-                  <span className="week-bar" style={{ height: `${d.value}%` }} />
-                  <span className="week-label">{d.day}</span>
-                </div>
-              ))}
+          <section className="panel module-placeholder">
+            <h2 className="panel-title">Water intake</h2>
+            <div className="placeholder-body">
+              <span className="placeholder-icon" aria-hidden="true">
+                💧
+              </span>
+              <p>Track your daily water intake here.</p>
+              <span className="coming-soon-badge">Coming soon</span>
             </div>
           </section>
 
-          <section className="panel panel-wide">
-            <h2 className="panel-title">Goals in progress</h2>
-            <div className="goal-list">
-              {GOALS.map((g) => (
-                <div className="goal-row" key={g.label}>
-                  <div className="goal-info">
-                    <span>{g.label}</span>
-                    <span className="goal-pct">{g.progress}%</span>
-                  </div>
-                  <div className="goal-track">
-                    <span className="goal-fill" style={{ width: `${g.progress}%` }} />
-                  </div>
-                </div>
-              ))}
+          <section className="panel module-placeholder">
+            <h2 className="panel-title">Sleep schedule</h2>
+            <div className="placeholder-body">
+              <span className="placeholder-icon" aria-hidden="true">
+                🌙
+              </span>
+              <p>Track your sleep hours and schedule here.</p>
+              <span className="coming-soon-badge">Coming soon</span>
             </div>
           </section>
         </div>

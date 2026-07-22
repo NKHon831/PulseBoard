@@ -1,37 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { AppNav } from '../components/NavBar'
+import { ConfirmModal } from '../components/ConfirmModal'
 import { apiFetch, ApiError } from '../lib/api'
+import { useExpenses, groupByDay, type ExpenseDto } from '../lib/expenses'
+import { formatAmount, formatDate, todayStr } from '../lib/format'
 import './Expenses.css'
 
-type ExpenseDto = {
-  id: string
-  amount: number
-  category: string
-  description: string | null
-  expenseDate: string
-}
-
 const CATEGORIES = ['Breakfast', 'Lunch', 'Dinner', 'Others']
-
-function todayStr() {
-  const d = new Date()
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
-}
-
-function formatAmount(n: number) {
-  return `$${n.toFixed(2)}`
-}
-
-function formatDate(iso: string) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
 
 function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
@@ -46,9 +21,7 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint: 
 function Expenses() {
   const today = todayStr()
 
-  const [expenses, setExpenses] = useState<ExpenseDto[]>([])
-  const [loading, setLoading] = useState(true)
-  const [listError, setListError] = useState('')
+  const { expenses, setExpenses, loading, error: listError, setError: setListError, reload } = useExpenses()
 
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState(CATEGORIES[0])
@@ -56,22 +29,7 @@ function Expenses() {
   const [date, setDate] = useState(today)
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-
-  async function loadExpenses() {
-    try {
-      const data = await apiFetch<ExpenseDto[]>('/api/expenses')
-      setExpenses(data)
-      setListError('')
-    } catch (err) {
-      setListError(err instanceof ApiError ? err.message : 'Failed to load expenses')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadExpenses()
-  }, [])
+  const [pendingDelete, setPendingDelete] = useState<ExpenseDto | null>(null)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -101,7 +59,7 @@ function Expenses() {
       setAmount('')
       setDescription('')
       setDate(today)
-      await loadExpenses()
+      await reload()
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Failed to add expense')
     } finally {
@@ -109,10 +67,14 @@ function Expenses() {
     }
   }
 
-  async function handleDelete(id: string) {
+  async function confirmDelete() {
+    if (!pendingDelete) return
+    const expense = pendingDelete
+    setPendingDelete(null)
+
     try {
-      await apiFetch<void>(`/api/expenses/${id}`, { method: 'DELETE' })
-      setExpenses((prev) => prev.filter((expense) => expense.id !== id))
+      await apiFetch<void>(`/api/expenses/${expense.id}`, { method: 'DELETE' })
+      setExpenses((prev) => prev.filter((e) => e.id !== expense.id))
     } catch (err) {
       setListError(err instanceof ApiError ? err.message : 'Failed to delete expense')
     }
@@ -122,6 +84,7 @@ function Expenses() {
   const monthPrefix = today.slice(0, 7)
   const monthExpenses = expenses.filter((e) => e.expenseDate.startsWith(monthPrefix))
   const monthTotal = monthExpenses.reduce((sum, e) => sum + e.amount, 0)
+  const dayGroups = groupByDay(expenses)
 
   return (
     <>
@@ -208,35 +171,58 @@ function Expenses() {
 
             {loading ? (
               <p className="expense-empty">Loading…</p>
-            ) : expenses.length === 0 ? (
+            ) : dayGroups.length === 0 ? (
               <p className="expense-empty">No expenses logged yet. Add your first one.</p>
             ) : (
-              <ul className="expense-list">
-                {expenses.map((e) => (
-                  <li className="expense-row" key={e.id}>
-                    <div className="expense-info">
-                      <span className="expense-category">{e.category}</span>
-                      {e.description && <span className="expense-desc">{e.description}</span>}
-                      <span className="expense-date">{formatDate(e.expenseDate)}</span>
+              <div className="expense-groups">
+                {dayGroups.map((group) => (
+                  <div className="expense-day-group" key={group.date}>
+                    <div className="expense-day-head">
+                      <span className="expense-day-date">{formatDate(group.date)}</span>
+                      <span className="expense-day-total">{formatAmount(group.total)}</span>
                     </div>
-                    <div className="expense-actions">
-                      <span className="expense-amount">{formatAmount(e.amount)}</span>
-                      <button
-                        type="button"
-                        className="expense-delete"
-                        onClick={() => handleDelete(e.id)}
-                        aria-label={`Delete ${e.category} expense of ${formatAmount(e.amount)}`}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </li>
+                    <ul className="expense-list">
+                      {group.items.map((e) => (
+                        <li className="expense-row" key={e.id}>
+                          <div className="expense-info">
+                            <span className="expense-category">{e.category}</span>
+                            {e.description && <span className="expense-desc">{e.description}</span>}
+                          </div>
+                          <div className="expense-actions">
+                            <span className="expense-amount">{formatAmount(e.amount)}</span>
+                            <button
+                              type="button"
+                              className="expense-delete"
+                              onClick={() => setPendingDelete(e)}
+                              aria-label={`Delete ${e.category} expense of ${formatAmount(e.amount)}`}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </section>
         </div>
       </div>
+
+      <ConfirmModal
+        open={pendingDelete !== null}
+        title="Delete expense?"
+        message={
+          pendingDelete
+            ? `Delete this ${pendingDelete.category} expense of ${formatAmount(pendingDelete.amount)} from ${formatDate(pendingDelete.expenseDate)}? This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </>
   )
 }
