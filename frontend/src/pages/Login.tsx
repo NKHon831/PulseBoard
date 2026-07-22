@@ -1,10 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AuthNav } from '../components/NavBar'
+import { useAuth } from '../lib/auth'
+import { ApiError } from '../lib/api'
 import './Auth.css'
 
 function Login() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
@@ -26,9 +29,14 @@ function Login() {
     if (!validate()) return
 
     setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 500))
-    setSubmitting(false)
-    navigate('/home')
+    try {
+      await login(email.trim(), password)
+      navigate('/home')
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (

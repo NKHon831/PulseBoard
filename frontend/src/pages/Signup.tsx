@@ -1,17 +1,21 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AuthNav } from '../components/NavBar'
+import { useAuth } from '../lib/auth'
+import { ApiError } from '../lib/api'
 import './Auth.css'
 
 type Errors = { name?: string; email?: string; password?: string; confirm?: string }
 
 function Signup() {
   const navigate = useNavigate()
+  const { signup } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [errors, setErrors] = useState<Errors>({})
+  const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   function validate() {
@@ -28,12 +32,18 @@ function Signup() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    setFormError('')
     if (!validate()) return
 
     setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 500))
-    setSubmitting(false)
-    navigate('/home')
+    try {
+      await signup(name.trim(), email.trim(), password)
+      navigate('/home')
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -46,6 +56,8 @@ function Signup() {
             <h1>Create your account</h1>
             <p className="auth-sub">Start tracking what matters in under a minute.</p>
           </div>
+
+          {formError && <div className="auth-error">{formError}</div>}
 
           <form className="auth-form" onSubmit={handleSubmit} noValidate>
             <div className={`field${errors.name ? ' field-error' : ''}`}>

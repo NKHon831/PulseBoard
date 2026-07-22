@@ -20,24 +20,14 @@
   margin-top: 6px;
 }
 
-.streak-badge {
-  background: var(--accent-bg);
-  color: var(--accent);
-  border: 1px solid var(--accent-border);
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-bottom: 24px;
 
   @media (max-width: 800px) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
 }
 
@@ -93,8 +83,30 @@
   margin-bottom: 16px;
 }
 
-/* Habit list */
-.habit-list {
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.panel-head .panel-title {
+  margin-bottom: 0;
+}
+
+.panel-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.summary-empty {
+  color: var(--text);
+  font-size: 14px;
+}
+
+/* Expenses summary */
+.day-summary-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -103,111 +115,55 @@
   gap: 8px;
 }
 
-.habit-item {
-  width: 100%;
+.day-summary-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  justify-content: space-between;
+  padding: 10px 14px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background 0.15s,
-    border-color 0.15s,
-    color 0.15s;
-
-  &:hover {
-    border-color: var(--accent-border);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-}
-
-.habit-item.done {
-  color: var(--text-h);
-}
-
-.habit-check {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  border: 1.5px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.habit-item.done .habit-check {
-  background: var(--success);
-  border-color: var(--success);
-}
-
-/* Week chart */
-.week-chart {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  height: 160px;
-}
-
-.week-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  height: 100%;
-  gap: 8px;
-}
-
-.week-bar {
-  width: 100%;
-  border-radius: 5px 5px 2px 2px;
-  background: linear-gradient(180deg, var(--accent), var(--accent-border));
-}
-
-.week-label {
-  font-size: 12px;
-  color: var(--text);
-}
-
-/* Goals */
-.goal-list {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.goal-info {
-  display: flex;
-  justify-content: space-between;
   font-size: 14px;
+}
+
+.day-summary-date {
   color: var(--text-h);
-  margin-bottom: 8px;
+  font-weight: 500;
 }
 
-.goal-pct {
+.day-summary-total {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+/* Placeholder modules */
+.module-placeholder {
+  border-style: dashed;
+}
+
+.placeholder-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.placeholder-icon {
+  font-size: 28px;
+}
+
+.placeholder-body p {
+  font-size: 14px;
   color: var(--text);
+  margin: 0;
 }
 
-.goal-track {
-  height: 8px;
-  border-radius: 999px;
+.coming-soon-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
   background: var(--code-bg);
-  overflow: hidden;
-}
-
-.goal-fill {
-  display: block;
-  height: 100%;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: var(--accent);
+  padding: 4px 10px;
 }
