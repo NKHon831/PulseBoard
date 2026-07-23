@@ -1,9 +1,3 @@
-const currencyFormatter = new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' })
-
-export function formatAmount(n: number) {
-  return currencyFormatter.format(n)
-}
-
 export function formatDate(iso: string) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
     month: 'short',

@@ -59,8 +59,190 @@
   gap: 10px;
 }
 
+/* Currency selector */
+.currency-select {
+  display: inline-flex;
+}
+
+.currency-select select {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.currency-rate {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Hamburger toggle — hidden on desktop */
+.nav-toggle {
+  display: none;
+  margin-left: auto;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.nav-toggle-bars {
+  position: relative;
+  width: 18px;
+  height: 14px;
+
+  span {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--text-h);
+    transition:
+      transform 0.2s ease,
+      opacity 0.2s ease,
+      top 0.2s ease;
+  }
+  span:nth-child(1) {
+    top: 0;
+  }
+  span:nth-child(2) {
+    top: 6px;
+  }
+  span:nth-child(3) {
+    top: 12px;
+  }
+
+  &.is-open span:nth-child(1) {
+    top: 6px;
+    transform: rotate(45deg);
+  }
+  &.is-open span:nth-child(2) {
+    opacity: 0;
+  }
+  &.is-open span:nth-child(3) {
+    top: 6px;
+    transform: rotate(-45deg);
+  }
+}
+
+/* Mobile slide-in drawer */
+.nav-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 15;
+}
+
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100svh;
+  width: 78%;
+  max-width: 320px;
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  z-index: 20;
+  padding: 88px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+  visibility: hidden;
+}
+
+.mobile-menu.is-open {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+.mobile-menu-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobile-link {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 17px;
+  color: var(--text);
+  text-decoration: none;
+
+  &:hover {
+    background: var(--bg-alt);
+    color: var(--text-h);
+  }
+
+  &.nav-current {
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: 600;
+  }
+}
+
+.mobile-menu-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  .currency-select,
+  .currency-select select {
+    width: 100%;
+  }
+}
+
 @media (max-width: 720px) {
-  .nav-links a:not(.nav-current) {
+  .nav-links-desktop,
+  .nav-auth-desktop {
+    display: none;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+  }
+}
+
+/* Above the mobile breakpoint the drawer never shows. */
+@media (min-width: 721px) {
+  .mobile-menu,
+  .nav-backdrop {
     display: none;
   }
 }
