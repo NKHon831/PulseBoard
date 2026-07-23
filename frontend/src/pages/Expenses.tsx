@@ -2,8 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { AppNav } from '../components/NavBar'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { apiFetch, ApiError } from '../lib/api'
+import { useFormatAmount } from '../lib/currency'
 import { useExpenses, groupByDay, type ExpenseDto } from '../lib/expenses'
-import { formatAmount, formatDate, todayStr } from '../lib/format'
+import { formatDate, todayStr } from '../lib/format'
 import './Expenses.css'
 
 const CATEGORIES = ['Breakfast', 'Lunch', 'Dinner', 'Others']
@@ -20,6 +21,7 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint: 
 
 function Expenses() {
   const today = todayStr()
+  const formatAmount = useFormatAmount()
 
   const { expenses, setExpenses, loading, error: listError, setError: setListError, reload } = useExpenses()
 

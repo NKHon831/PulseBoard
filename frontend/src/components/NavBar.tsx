@@ -1,10 +1,17 @@
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { useCurrency } from '../lib/currency'
+import { BASE_CURRENCY, CURRENCIES, CURRENCY_CODES, formatRate, type CurrencyCode } from '../lib/currencies'
 import './NavBar.css'
 
 function Logo() {
+  const { user } = useAuth()
+  // Once logged in, the logo should return to the dashboard, not the landing page.
+  const to = user ? '/home' : '/'
+
   return (
-    <Link to="/" className="logo">
+    <Link to={to} className="logo">
       <svg viewBox="0 0 48 46" width="24" height="24" aria-hidden="true">
         <path
           fill="var(--accent)"
@@ -13,6 +20,39 @@ function Logo() {
       </svg>
       <span>PulseBoard</span>
     </Link>
+  )
+}
+
+function CurrencySelect({ id }: { id: string }) {
+  const { currency, setCurrency } = useCurrency()
+
+  return (
+    <label className="currency-select" htmlFor={id}>
+      <span className="sr-only">Display currency</span>
+      <select
+        id={id}
+        value={currency}
+        onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+      >
+        {CURRENCY_CODES.map((code) => (
+          <option key={code} value={code}>
+            {CURRENCIES[code].label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function CurrencyRate() {
+  const { currency, rates } = useCurrency()
+  // Only meaningful when displaying a currency other than the base one.
+  if (currency === BASE_CURRENCY) return null
+
+  return (
+    <span className="currency-rate">
+      1 {BASE_CURRENCY} = {formatRate(rates[currency])} {CURRENCIES[currency].code}
+    </span>
   )
 }
 
@@ -42,8 +82,15 @@ export function AppNav() {
   const location = useLocation()
   const navigate = useNavigate()
   const { logout } = useAuth()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  // Close the mobile menu whenever the route changes.
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
 
   function handleLogout() {
+    setMenuOpen(false)
     logout()
     navigate('/login')
   }
@@ -52,7 +99,8 @@ export function AppNav() {
     <header className="nav">
       <div className="container nav-inner">
         <Logo />
-        <nav className="nav-links">
+
+        <nav className="nav-links nav-links-desktop">
           <Link to="/home" className={location.pathname === '/home' ? 'nav-current' : undefined}>
             Overview
           </Link>
@@ -60,10 +108,57 @@ export function AppNav() {
             Expenses
           </Link>
         </nav>
-        <button type="button" className="btn btn-ghost nav-cta" onClick={handleLogout}>
-          Log out
+
+        <div className="nav-auth nav-auth-desktop">
+          <CurrencyRate />
+          <CurrencySelect id="currency-desktop" />
+          <button type="button" className="btn btn-ghost nav-cta" onClick={handleLogout}>
+            Log out
+          </button>
+        </div>
+
+        <button
+          type="button"
+          className="nav-toggle"
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={menuOpen}
+          aria-controls="mobile-menu"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span className={`nav-toggle-bars${menuOpen ? ' is-open' : ''}`} aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
         </button>
       </div>
+
+      {menuOpen && <div className="nav-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
+
+      <aside id="mobile-menu" className={`mobile-menu${menuOpen ? ' is-open' : ''}`}>
+        <nav className="mobile-menu-links">
+          <Link
+            to="/home"
+            className={location.pathname === '/home' ? 'mobile-link nav-current' : 'mobile-link'}
+          >
+            Overview
+          </Link>
+          <Link
+            to="/expenses"
+            className={location.pathname === '/expenses' ? 'mobile-link nav-current' : 'mobile-link'}
+          >
+            Expenses
+          </Link>
+        </nav>
+
+        <div className="mobile-menu-footer">
+          <CurrencySelect id="currency-mobile" />
+          <CurrencyRate />
+          <button type="button" className="btn btn-ghost" onClick={handleLogout}>
+            Log out
+          </button>
+        </div>
+      </aside>
     </header>
   )
 }

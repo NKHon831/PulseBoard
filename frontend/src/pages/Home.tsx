@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
 import { AppNav } from '../components/NavBar'
 import { useAuth } from '../lib/auth'
+import { useFormatAmount } from '../lib/currency'
 import { useExpenses, groupByDay } from '../lib/expenses'
-import { formatAmount, formatDate, todayStr } from '../lib/format'
+import { formatDate, todayStr } from '../lib/format'
 import './Home.css'
 
 function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
@@ -17,6 +18,7 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint: 
 
 function Home() {
   const { user } = useAuth()
+  const formatAmount = useFormatAmount()
   const { expenses, loading } = useExpenses()
 
   const today = todayStr()
