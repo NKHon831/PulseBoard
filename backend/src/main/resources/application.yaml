@@ -23,3 +23,7 @@ app:
     expiration-ms: ${JWT_EXPIRATION_MS}
   cors:
     frontend-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
+  exchange-rate:
+    # Queried as <api-url>?base=MYR&symbols=JPY. Leave blank to always use the
+    # static fallback rates baked into CurrencyCode.
+    api-url: ${EXCHANGE_RATE_API_URL}

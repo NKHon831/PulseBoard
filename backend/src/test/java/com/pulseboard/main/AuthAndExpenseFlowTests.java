@@ -110,4 +110,55 @@ class AuthAndExpenseFlowTests {
         mockMvc.perform(delete("/api/expenses/" + expenseId).header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void amountsAreConvertedServerSide() throws Exception {
+        String email = "yen.user+" + System.nanoTime() + "@example.com";
+        String signupResponse = mockMvc.perform(post("/api/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("name", "Yen User", "email", email, "password", "supersecret1"))))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String token = JsonPath.read(signupResponse, "$.token");
+
+        // An amount entered in JPY is stored as base currency but echoed back in JPY.
+        String createResponse = mockMvc.perform(post("/api/expenses")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "amount", 3400,
+                                "currency", "JPY",
+                                "category", "Lunch",
+                                "expenseDate", LocalDate.now().toString()))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.currency").value("JPY"))
+                .andExpect(jsonPath("$.amount").value(3400))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String expenseId = JsonPath.read(createResponse, "$.id");
+
+        // Reading it back in JPY round-trips to what was entered...
+        mockMvc.perform(get("/api/expenses?currency=JPY").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].amount").value(3400))
+                .andExpect(jsonPath("$[0].currency").value("JPY"));
+
+        // ...while the same expense in the base currency is a far smaller number,
+        // proving it was not stored as a raw 3400 MYR.
+        String baseResponse = mockMvc.perform(get("/api/expenses").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].currency").value("MYR"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        double baseAmount = ((Number) JsonPath.read(baseResponse, "$[0].amount")).doubleValue();
+        org.assertj.core.api.Assertions.assertThat(baseAmount).isLessThan(3400.0).isGreaterThan(0.0);
+
+        mockMvc.perform(delete("/api/expenses/" + expenseId).header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+    }
 }
