@@ -6,6 +6,18 @@ spring:
     username: ${DB_USERNAME:postgres.<project-ref>}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # The Supabase pooler on port 5432 runs in session mode, where every open
+      # connection occupies one of a small number of slots (pool_size, 15 by
+      # default) until it is closed. Hikari's default of 10 leaves no room for a
+      # second instance or for a restart whose old pool has not drained yet, so
+      # keep the ceiling low and let idle connections go quickly.
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      minimum-idle: ${DB_POOL_MIN_IDLE:1}
+      idle-timeout: 30000
+      # Recycle before the pooler decides to drop the connection itself.
+      max-lifetime: 600000
+      connection-timeout: 10000
   flyway:
     locations: classpath:db/migration
     baseline-on-migrate: true
