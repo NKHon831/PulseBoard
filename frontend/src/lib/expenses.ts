@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError } from './api'
+import { useCurrency } from './currency'
+import type { CurrencyCode } from './currencies'
 
 export type ExpenseDto = {
   id: string
+  /** Already converted by the backend into `currency`. */
   amount: number
+  currency: CurrencyCode
   category: string
   description: string | null
   expenseDate: string
@@ -16,21 +20,28 @@ export type DayGroup = {
 }
 
 export function useExpenses() {
+  const { currency } = useCurrency()
   const [expenses, setExpenses] = useState<ExpenseDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  // Guards against a slow response for a previously selected currency landing
+  // after a faster one and overwriting it.
+  const requestId = useRef(0)
 
   const reload = useCallback(async () => {
+    const id = ++requestId.current
     try {
-      const data = await apiFetch<ExpenseDto[]>('/api/expenses')
+      const data = await apiFetch<ExpenseDto[]>(`/api/expenses?currency=${currency}`)
+      if (id !== requestId.current) return
       setExpenses(data)
       setError('')
     } catch (err) {
+      if (id !== requestId.current) return
       setError(err instanceof ApiError ? err.message : 'Failed to load expenses')
     } finally {
-      setLoading(false)
+      if (id === requestId.current) setLoading(false)
     }
-  }, [])
+  }, [currency])
 
   useEffect(() => {
     reload()

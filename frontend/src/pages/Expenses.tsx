@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { AppNav } from '../components/NavBar'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { apiFetch, ApiError } from '../lib/api'
-import { useFormatAmount } from '../lib/currency'
+import { useCurrency, useFormatAmount } from '../lib/currency'
 import { useExpenses, groupByDay, type ExpenseDto } from '../lib/expenses'
 import { formatDate, todayStr } from '../lib/format'
 import './Expenses.css'
@@ -22,6 +22,7 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint: 
 function Expenses() {
   const today = todayStr()
   const formatAmount = useFormatAmount()
+  const { currency } = useCurrency()
 
   const { expenses, setExpenses, loading, error: listError, setError: setListError, reload } = useExpenses()
 
@@ -49,10 +50,13 @@ function Expenses() {
 
     setSubmitting(true)
     try {
+      // Send the amount exactly as typed plus the currency it was typed in; the
+      // backend converts it to the base currency at the rate current right now.
       await apiFetch<ExpenseDto>('/api/expenses', {
         method: 'POST',
         body: JSON.stringify({
           amount: amountNum,
+          currency,
           category,
           description: description.trim() || undefined,
           expenseDate: date,
@@ -114,7 +118,7 @@ function Expenses() {
 
             <form className="expense-form" onSubmit={handleSubmit} noValidate>
               <div className="field">
-                <label htmlFor="amount">Amount</label>
+                <label htmlFor="amount">Amount ({currency})</label>
                 <input
                   id="amount"
                   type="number"

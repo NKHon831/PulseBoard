@@ -4,21 +4,23 @@ export type CurrencyDef = {
   code: CurrencyCode
   label: string
   locale: string
-  // Conversion rate FROM the base currency (MYR) TO this currency. MYR is the
-  // base, so its rate is 1. Non-base rates here are approximate offline fallbacks
-  // used only until the live rate loads from the exchange-rate API (see fetchRates).
-  rate: number
 }
 
-// The currency all stored amounts are denominated in.
+// The currency the backend stores every amount in. Kept here only so the UI can
+// tell when a displayed rate is meaningful — the frontend never converts.
 export const BASE_CURRENCY: CurrencyCode = 'MYR'
 
+// Keep in sync with CurrencyCode in the backend.
 export const CURRENCIES: Record<CurrencyCode, CurrencyDef> = {
-  MYR: { code: 'MYR', label: 'MYR (RM)', locale: 'en-MY', rate: 1 },
-  JPY: { code: 'JPY', label: 'JPY (¥)', locale: 'ja-JP', rate: 34 },
+  MYR: { code: 'MYR', label: 'MYR (RM)', locale: 'en-MY' },
+  JPY: { code: 'JPY', label: 'JPY (¥)', locale: 'ja-JP' },
 }
 
 export const CURRENCY_CODES = Object.keys(CURRENCIES) as CurrencyCode[]
+
+export function isCurrencyCode(value: unknown): value is CurrencyCode {
+  return typeof value === 'string' && value in CURRENCIES
+}
 
 const formatters = new Map<CurrencyCode, Intl.NumberFormat>()
 
@@ -32,46 +34,15 @@ function getFormatter(code: CurrencyCode) {
   return formatter
 }
 
-/** Convert an amount from the base currency into `code` at the given rate. */
-export function convertAmount(baseAmount: number, rate: number) {
-  return baseAmount * rate
-}
-
 /**
- * Format a base-currency amount for display in `code`. Pass a live `rate` (from
- * the exchange-rate API); falls back to the static rate when one isn't supplied.
+ * Format an amount that is ALREADY denominated in `code`. The API converts
+ * amounts server-side, so this is purely presentational — no rate math here.
  */
-export function formatAmount(baseAmount: number, code: CurrencyCode, rate = CURRENCIES[code].rate) {
-  return getFormatter(code).format(convertAmount(baseAmount, rate))
+export function formatAmount(amount: number, code: CurrencyCode) {
+  return getFormatter(code).format(amount)
 }
 
 /** Format a conversion rate for display, e.g. 39.979 -> "39.98". */
 export function formatRate(rate: number) {
   return rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-const RATES_API_URL = import.meta.env.VITE_EXCHANGE_RATE_API_URL
-
-/**
- * Fetch live conversion rates from the base currency to each of `codes`
- * (base-currency entries resolve to 1 without a request). Returns only the
- * rates the API actually provided.
- */
-export async function fetchRates(
-  codes: CurrencyCode[],
-): Promise<Partial<Record<CurrencyCode, number>>> {
-  const symbols = codes.filter((code) => code !== BASE_CURRENCY)
-  if (symbols.length === 0) return {}
-
-  const url = `${RATES_API_URL}?base=${BASE_CURRENCY}&symbols=${symbols.join(',')}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Exchange rate request failed: ${res.status}`)
-
-  const data = (await res.json()) as { rates?: Record<string, number> }
-  const result: Partial<Record<CurrencyCode, number>> = {}
-  for (const code of symbols) {
-    const rate = data.rates?.[code]
-    if (typeof rate === 'number') result[code] = rate
-  }
-  return result
 }
