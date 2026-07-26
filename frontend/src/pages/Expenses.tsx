@@ -47,6 +47,12 @@ function Expenses() {
       setFormError('Pick a date')
       return
     }
+    // The form is noValidate, so the input's `max` is not enforced on submit.
+    // Both are YYYY-MM-DD, so a string compare is a date compare.
+    if (date > today) {
+      setFormError('Date cannot be in the future')
+      return
+    }
 
     setSubmitting(true)
     try {

@@ -2,6 +2,7 @@ package com.pulseboard.expense;
 
 import com.pulseboard.common.currency.CurrencyCode;
 import com.pulseboard.common.currency.ExchangeRateService;
+import com.pulseboard.common.exception.BadRequestException;
 import com.pulseboard.expense.dto.ExpenseRequest;
 import com.pulseboard.expense.dto.ExpenseResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,11 +14,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -131,5 +134,27 @@ class ExpenseServiceTest {
         assertThat(stored.getRateSnapshot())
                 .containsEntry(CurrencyCode.JPY, CurrencyCode.JPY.getFallbackRate());
         assertThat(stored.getDescription()).isNull();
+    }
+
+    @Test
+    void acceptsTodayInEveryClientTimezone() {
+        // A UTC server must not reject a UTC+8 client's "today", which is what a
+        // naive @PastOrPresent on the request DTO used to do.
+        LocalDate tomorrowInUtc = LocalDate.now(ZoneOffset.UTC).plusDays(1);
+        ExpenseRequest request = new ExpenseRequest(
+                new BigDecimal("10"), CurrencyCode.MYR, "Breakfast", null, tomorrowInUtc);
+
+        assertThat(service.create(UUID.randomUUID(), request)).isNotNull();
+    }
+
+    @Test
+    void stillRejectsDatesThatCannotBeTodayAnywhere() {
+        LocalDate wellIntoTheFuture = LocalDate.now(ZoneOffset.UTC).plusDays(2);
+        ExpenseRequest request = new ExpenseRequest(
+                new BigDecimal("10"), CurrencyCode.MYR, "Breakfast", null, wellIntoTheFuture);
+
+        assertThatThrownBy(() -> service.create(UUID.randomUUID(), request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("cannot be in the future");
     }
 }

@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,6 +36,8 @@ public class ExpenseService {
      * the rates in force right now, so the expense keeps this value for good.
      */
     public ExpenseResponse create(UUID userId, ExpenseRequest request) {
+        requireNotFutureDated(request.expenseDate());
+
         CurrencyCode currency = request.currency() == null ? CurrencyCode.BASE : request.currency();
 
         // Take one snapshot and derive everything from it, so the stored rate and
@@ -83,6 +87,22 @@ public class ExpenseService {
             return expense.getOriginalAmount().setScale(currency.getDecimalPlaces(), RoundingMode.HALF_UP);
         }
         return exchangeRateService.fromBaseAt(expense.getAmount(), currency, expense.getRateSnapshot());
+    }
+
+    /**
+     * Rejects dates that cannot be "today" anywhere on earth.
+     *
+     * <p>The server does not know the client's timezone, and its own is not a
+     * safe proxy: a UTC server would reject a perfectly valid "today" from a
+     * UTC+8 client for the first eight hours of every day. Since the largest UTC
+     * offset in use is +14, allowing one day beyond the UTC date accepts every
+     * legitimate local today while still blocking genuinely future entries. The
+     * client enforces the exact rule, because only it knows the user's timezone.
+     */
+    private void requireNotFutureDated(LocalDate expenseDate) {
+        if (expenseDate.isAfter(LocalDate.now(ZoneOffset.UTC).plusDays(1))) {
+            throw new BadRequestException("expenseDate cannot be in the future");
+        }
     }
 
     private String blankToNull(String value) {

@@ -4,7 +4,6 @@ import com.pulseboard.common.currency.CurrencyCode;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -26,7 +25,9 @@ public record ExpenseRequest(
         @Size(max = 255, message = "must be at most 255 characters")
         String description,
 
+        // Not @PastOrPresent: that resolves "today" in the server's own timezone,
+        // which rejects a client whose local date is legitimately ahead of it.
+        // ExpenseService applies a timezone-safe bound instead.
         @NotNull(message = "is required")
-        @PastOrPresent(message = "cannot be in the future")
         LocalDate expenseDate) {
 }
