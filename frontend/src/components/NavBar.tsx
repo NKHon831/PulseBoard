@@ -46,12 +46,13 @@ function CurrencySelect({ id }: { id: string }) {
 
 function CurrencyRate() {
   const { currency, rates } = useCurrency()
-  // Only meaningful when displaying a currency other than the base one.
-  if (currency === BASE_CURRENCY) return null
+  const rate = rates[currency]
+  // Only meaningful for a non-base currency, and only once the rate has loaded.
+  if (currency === BASE_CURRENCY || rate === undefined) return null
 
   return (
     <span className="currency-rate">
-      1 {BASE_CURRENCY} = {formatRate(rates[currency])} {CURRENCIES[currency].code}
+      1 {BASE_CURRENCY} = {formatRate(rate)} {CURRENCIES[currency].code}
     </span>
   )
 }

@@ -1,8 +1,10 @@
 package com.pulseboard.expense;
 
+import com.pulseboard.common.currency.CurrencyCode;
 import com.pulseboard.expense.dto.ExpenseRequest;
 import com.pulseboard.expense.dto.ExpenseResponse;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -19,17 +22,17 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/expenses")
+@RequiredArgsConstructor
 public class ExpenseController {
 
     private final ExpenseService expenseService;
 
-    public ExpenseController(ExpenseService expenseService) {
-        this.expenseService = expenseService;
-    }
-
+    /** Amounts are returned already converted into {@code currency}. */
     @GetMapping
-    public List<ExpenseResponse> list(@AuthenticationPrincipal UUID userId) {
-        return expenseService.list(userId);
+    public List<ExpenseResponse> list(
+            @AuthenticationPrincipal UUID userId,
+            @RequestParam(defaultValue = CurrencyCode.BASE_CODE) CurrencyCode currency) {
+        return expenseService.list(userId, currency);
     }
 
     @PostMapping

@@ -1,44 +1,22 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { apiFetch } from './api'
 import {
   BASE_CURRENCY,
-  CURRENCIES,
-  CURRENCY_CODES,
-  fetchRates,
   formatAmount as formatIn,
+  isCurrencyCode,
   type CurrencyCode,
 } from './currencies'
 
 const CURRENCY_KEY = 'pulseboard.currency'
-const RATES_KEY = 'pulseboard.rates'
 
-type Rates = Record<CurrencyCode, number>
+/** Rates are display-only: the backend converts every amount it returns. */
+type Rates = Partial<Record<CurrencyCode, number>>
 
-function staticRates(): Rates {
-  return Object.fromEntries(CURRENCY_CODES.map((code) => [code, CURRENCIES[code].rate])) as Rates
-}
+type RatesResponse = { base: string; rates: Record<string, number> }
 
 function readStoredCurrency(): CurrencyCode {
   const saved = localStorage.getItem(CURRENCY_KEY)
-  return saved === 'JPY' || saved === 'MYR' ? saved : 'MYR'
-}
-
-// Seed from the last rates we cached (instant + offline), falling back to the
-// static approximations baked into CURRENCIES.
-function readStoredRates(): Rates {
-  const base = staticRates()
-  try {
-    const saved = localStorage.getItem(RATES_KEY)
-    if (!saved) return base
-    const parsed = JSON.parse(saved) as Partial<Record<CurrencyCode, number>>
-    for (const code of CURRENCY_CODES) {
-      const rate = parsed[code]
-      if (typeof rate === 'number') base[code] = rate
-    }
-  } catch {
-    // Ignore malformed cache and use the static fallbacks.
-  }
-  base[BASE_CURRENCY] = 1
-  return base
+  return isCurrencyCode(saved) ? saved : BASE_CURRENCY
 }
 
 type CurrencyContextValue = {
@@ -51,27 +29,28 @@ const CurrencyContext = createContext<CurrencyContextValue | undefined>(undefine
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>(readStoredCurrency)
-  const [rates, setRates] = useState<Rates>(readStoredRates)
+  const [rates, setRates] = useState<Rates>({ [BASE_CURRENCY]: 1 })
 
   const setCurrency = useCallback((code: CurrencyCode) => {
     setCurrencyState(code)
     localStorage.setItem(CURRENCY_KEY, code)
   }, [])
 
-  // Refresh live exchange rates on mount; keep cached/fallback rates if it fails.
+  // Fetch the rates the backend is converting with, purely so the nav can show
+  // them. If this fails the app still works — amounts arrive pre-converted.
   useEffect(() => {
     let cancelled = false
-    fetchRates(CURRENCY_CODES)
-      .then((live) => {
-        if (cancelled || Object.keys(live).length === 0) return
-        setRates((prev) => {
-          const next = { ...prev, ...live, [BASE_CURRENCY]: 1 }
-          localStorage.setItem(RATES_KEY, JSON.stringify(next))
-          return next
-        })
+    apiFetch<RatesResponse>('/api/currency/rates')
+      .then((data) => {
+        if (cancelled) return
+        const next: Rates = {}
+        for (const [code, rate] of Object.entries(data.rates)) {
+          if (isCurrencyCode(code) && typeof rate === 'number') next[code] = rate
+        }
+        setRates(next)
       })
       .catch(() => {
-        // Offline or API error — the cached/static rates remain in effect.
+        // Rate display is optional; leave it hidden.
       })
     return () => {
       cancelled = true
@@ -91,11 +70,11 @@ export function useCurrency() {
   return ctx
 }
 
-/** Returns a formatter bound to the currently selected currency and its live rate. */
+/**
+ * Returns a formatter for amounts the API already converted into the selected
+ * currency.
+ */
 export function useFormatAmount() {
-  const { currency, rates } = useCurrency()
-  return useCallback(
-    (baseAmount: number) => formatIn(baseAmount, currency, rates[currency]),
-    [currency, rates],
-  )
+  const { currency } = useCurrency()
+  return useCallback((amount: number) => formatIn(amount, currency), [currency])
 }
