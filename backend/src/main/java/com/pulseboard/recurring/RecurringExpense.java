@@ -1,4 +1,4 @@
-package com.pulseboard.expense;
+package com.pulseboard.recurring;
 
 import com.pulseboard.common.currency.CurrencyCode;
 import com.pulseboard.common.currency.RateSnapshotConverter;
@@ -24,13 +24,18 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * A fixed expense the user enters once and that is then written into their
+ * expenses on every matching day. Kept separate from {@link
+ * com.pulseboard.expense.Expense}: this is the rule, those are the money.
+ */
 @Entity
-@Table(name = "expenses")
+@Table(name = "recurring_expenses")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class Expense {
+public class RecurringExpense {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -51,14 +56,14 @@ public class Expense {
     @Column(name = "original_currency", nullable = false, length = 3)
     private CurrencyCode originalCurrency;
 
-    /** Base -> originalCurrency rate applied when this expense was saved. */
+    /** Base -> originalCurrency rate applied when this template was last saved. */
     @Column(name = "exchange_rate", nullable = false)
     private BigDecimal exchangeRate;
 
     /**
-     * Every base -> currency rate in force when this expense was saved, so it can
-     * be shown in any currency at the value it had then rather than today's.
-     * Null for rows created before snapshots existed.
+     * Rates in force when the template was last saved. Copied onto every expense
+     * it generates, so a fixed amount keeps the value it was set at rather than
+     * being re-priced every day.
      */
     @Convert(converter = RateSnapshotConverter.class)
     @Column(name = "rate_snapshot")
@@ -69,16 +74,21 @@ public class Expense {
 
     private String description;
 
-    @Column(name = "expense_date", nullable = false)
-    private LocalDate expenseDate;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private RecurrenceFrequency frequency;
 
-    /**
-     * The fixed-expense template that generated this row, or null when it was
-     * entered by hand. Cleared rather than cascaded if the template is deleted —
-     * the expense still happened.
-     */
-    @Column(name = "recurring_id")
-    private UUID recurringId;
+    /** Paused templates keep their history but stop generating. */
+    @Column(nullable = false)
+    private boolean active;
+
+    /** No expense is ever generated for a date before this. */
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
+
+    /** Last date generation has caught up to; null until the first run. */
+    @Column(name = "last_generated_date")
+    private LocalDate lastGeneratedDate;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

@@ -1,6 +1,8 @@
-package com.pulseboard.expense.dto;
+package com.pulseboard.recurring.dto;
 
 import com.pulseboard.common.currency.CurrencyCode;
+import com.pulseboard.expense.dto.ExpenseRequest;
+import com.pulseboard.recurring.RecurrenceFrequency;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -9,7 +11,7 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record ExpenseRequest(
+public record RecurringExpenseRequest(
         // The amount as typed by the user, denominated in `currency`.
         @NotNull(message = "is required")
         @DecimalMin(value = "0.01", message = "must be greater than 0")
@@ -18,21 +20,21 @@ public record ExpenseRequest(
         // Currency of `amount`; defaults to the base currency when omitted.
         CurrencyCode currency,
 
-        // Keep in sync with CATEGORIES in frontend/src/lib/expenses.ts
         @NotNull(message = "is required")
-        @Pattern(regexp = CATEGORY_PATTERN, message = CATEGORY_MESSAGE)
+        @Pattern(regexp = ExpenseRequest.CATEGORY_PATTERN, message = ExpenseRequest.CATEGORY_MESSAGE)
         String category,
 
         @Size(max = 255, message = "must be at most 255 characters")
         String description,
 
-        // Not @PastOrPresent: that resolves "today" in the server's own timezone,
-        // which rejects a client whose local date is legitimately ahead of it.
-        // ExpenseService applies a timezone-safe bound instead.
         @NotNull(message = "is required")
-        LocalDate expenseDate) {
+        RecurrenceFrequency frequency,
 
-    /** Shared with recurring expenses, which draw on the same categories. */
-    public static final String CATEGORY_PATTERN = "Breakfast|Lunch|Dinner|Others";
-    public static final String CATEGORY_MESSAGE = "must be one of Breakfast, Lunch, Dinner, Others";
+        // The first day this can generate an expense for. Defaults to the
+        // client's today when omitted, so a new fixed expense starts now rather
+        // than backfilling a history the user never spent.
+        LocalDate startDate,
+
+        // Null on create means active.
+        Boolean active) {
 }

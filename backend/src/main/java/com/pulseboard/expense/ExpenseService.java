@@ -8,6 +8,7 @@ import com.pulseboard.expense.dto.ExpenseRequest;
 import com.pulseboard.expense.dto.ExpenseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -16,6 +17,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
@@ -36,13 +38,40 @@ public class ExpenseService {
      * the rates in force right now, so the expense keeps this value for good.
      */
     public ExpenseResponse create(UUID userId, ExpenseRequest request) {
-        requireNotFutureDated(request.expenseDate());
-
-        CurrencyCode currency = request.currency() == null ? CurrencyCode.BASE : request.currency();
-
         // Take one snapshot and derive everything from it, so the stored rate and
         // the stored snapshot can never disagree.
         Map<CurrencyCode, BigDecimal> snapshot = exchangeRateService.snapshot();
+        Expense expense = build(userId, request, snapshot);
+        expenseRepository.save(expense);
+        return toResponse(expense, currencyOf(request));
+    }
+
+    /**
+     * Saves several expenses in one go, so a day's entries need not be keyed one
+     * at a time. All or nothing: if any entry is rejected, none are stored, and
+     * they all share a single rate snapshot so entries made together cannot end
+     * up valued at slightly different rates.
+     */
+    @Transactional
+    public List<ExpenseResponse> createAll(UUID userId, List<ExpenseRequest> requests) {
+        Map<CurrencyCode, BigDecimal> snapshot = exchangeRateService.snapshot();
+
+        List<Expense> expenses = requests.stream()
+                .map(request -> build(userId, request, snapshot))
+                .toList();
+
+        expenseRepository.saveAll(expenses);
+
+        // Each entry reads back in the currency it was typed in, as create() does.
+        return IntStream.range(0, expenses.size())
+                .mapToObj(i -> toResponse(expenses.get(i), currencyOf(requests.get(i))))
+                .toList();
+    }
+
+    private Expense build(UUID userId, ExpenseRequest request, Map<CurrencyCode, BigDecimal> snapshot) {
+        requireNotFutureDated(request.expenseDate());
+
+        CurrencyCode currency = currencyOf(request);
         BigDecimal rate = exchangeRateService.rateAt(snapshot, currency);
         BigDecimal baseAmount = exchangeRateService.toBaseAt(request.amount(), currency, snapshot);
 
@@ -51,7 +80,7 @@ public class ExpenseService {
             throw new BadRequestException("amount is too small to record in " + CurrencyCode.BASE);
         }
 
-        Expense expense = Expense.builder()
+        return Expense.builder()
                 .userId(userId)
                 .amount(baseAmount)
                 .originalAmount(request.amount())
@@ -62,8 +91,10 @@ public class ExpenseService {
                 .description(blankToNull(request.description()))
                 .expenseDate(request.expenseDate())
                 .build();
-        expenseRepository.save(expense);
-        return toResponse(expense, currency);
+    }
+
+    private CurrencyCode currencyOf(ExpenseRequest request) {
+        return request.currency() == null ? CurrencyCode.BASE : request.currency();
     }
 
     public void delete(UUID userId, UUID expenseId) {
