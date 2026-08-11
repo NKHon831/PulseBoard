@@ -108,6 +108,9 @@ export function AppNav() {
           <Link to="/expenses" className={location.pathname === '/expenses' ? 'nav-current' : undefined}>
             Expenses
           </Link>
+          <Link to="/fixed" className={location.pathname === '/fixed' ? 'nav-current' : undefined}>
+            Fixed
+          </Link>
         </nav>
 
         <div className="nav-auth nav-auth-desktop">
@@ -149,6 +152,12 @@ export function AppNav() {
             className={location.pathname === '/expenses' ? 'mobile-link nav-current' : 'mobile-link'}
           >
             Expenses
+          </Link>
+          <Link
+            to="/fixed"
+            className={location.pathname === '/fixed' ? 'mobile-link nav-current' : 'mobile-link'}
+          >
+            Fixed
           </Link>
         </nav>
 

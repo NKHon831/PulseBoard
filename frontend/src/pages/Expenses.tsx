@@ -3,11 +3,28 @@ import { AppNav } from '../components/NavBar'
 import { ConfirmModal } from '../components/ConfirmModal'
 import { apiFetch, ApiError } from '../lib/api'
 import { useCurrency, useFormatAmount } from '../lib/currency'
-import { useExpenses, groupByDay, type ExpenseDto } from '../lib/expenses'
+import { CATEGORIES, useExpenses, groupByDay, type ExpenseDto } from '../lib/expenses'
 import { formatDate, todayStr } from '../lib/format'
 import './Expenses.css'
 
-const CATEGORIES = ['Breakfast', 'Lunch', 'Dinner', 'Others']
+/** One line of the add form. Several can be filled in and submitted together. */
+type DraftEntry = {
+  key: number
+  amount: string
+  category: string
+  description: string
+}
+
+let nextDraftKey = 0
+
+function blankEntry(): DraftEntry {
+  return { key: nextDraftKey++, amount: '', category: CATEGORIES[0], description: '' }
+}
+
+/** Only the first row of the form shows its labels; see .field-label-repeat. */
+function labelClass(index: number) {
+  return index === 0 ? undefined : 'field-label-repeat'
+}
 
 function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
@@ -26,23 +43,24 @@ function Expenses() {
 
   const { expenses, setExpenses, loading, error: listError, setError: setListError, reload } = useExpenses()
 
-  const [amount, setAmount] = useState('')
-  const [category, setCategory] = useState(CATEGORIES[0])
-  const [description, setDescription] = useState('')
+  const [entries, setEntries] = useState<DraftEntry[]>(() => [blankEntry()])
   const [date, setDate] = useState(today)
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<ExpenseDto | null>(null)
 
+  function updateEntry(key: number, patch: Partial<DraftEntry>) {
+    setEntries((prev) => prev.map((entry) => (entry.key === key ? { ...entry, ...patch } : entry)))
+  }
+
+  function removeEntry(key: number) {
+    setEntries((prev) => (prev.length === 1 ? prev : prev.filter((entry) => entry.key !== key)))
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError('')
 
-    const amountNum = Number(amount)
-    if (!amount || Number.isNaN(amountNum) || amountNum <= 0) {
-      setFormError('Enter an amount greater than 0')
-      return
-    }
     if (!date) {
       setFormError('Pick a date')
       return
@@ -54,26 +72,51 @@ function Expenses() {
       return
     }
 
+    // An untouched line is just an empty slot, not a mistake — drop it. A line
+    // with a description but no amount is half-filled, so say so rather than
+    // quietly discarding what was typed.
+    const filled = []
+    for (const [index, entry] of entries.entries()) {
+      const amountNum = Number(entry.amount)
+      if (!entry.amount.trim()) {
+        if (entry.description.trim()) {
+          setFormError(`Entry ${index + 1}: enter an amount greater than 0`)
+          return
+        }
+        continue
+      }
+      if (Number.isNaN(amountNum) || amountNum <= 0) {
+        setFormError(`Entry ${index + 1}: enter an amount greater than 0`)
+        return
+      }
+      filled.push({
+        amount: amountNum,
+        currency,
+        category: entry.category,
+        description: entry.description.trim() || undefined,
+        expenseDate: date,
+      })
+    }
+
+    if (filled.length === 0) {
+      setFormError('Enter an amount greater than 0')
+      return
+    }
+
     setSubmitting(true)
     try {
-      // Send the amount exactly as typed plus the currency it was typed in; the
-      // backend converts it to the base currency at the rate current right now.
-      await apiFetch<ExpenseDto>('/api/expenses', {
+      // Amounts go up exactly as typed plus the currency they were typed in; the
+      // backend converts them at the rate current right now. The whole batch is
+      // saved together, so a rejected line leaves none of them stored.
+      await apiFetch<ExpenseDto[]>('/api/expenses/batch', {
         method: 'POST',
-        body: JSON.stringify({
-          amount: amountNum,
-          currency,
-          category,
-          description: description.trim() || undefined,
-          expenseDate: date,
-        }),
+        body: JSON.stringify({ expenses: filled }),
       })
-      setAmount('')
-      setDescription('')
+      setEntries([blankEntry()])
       setDate(today)
       await reload()
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Failed to add expense')
+      setFormError(err instanceof ApiError ? err.message : 'Failed to add expenses')
     } finally {
       setSubmitting(false)
     }
@@ -116,39 +159,14 @@ function Expenses() {
           <StatCard label="Total logged" value={String(expenses.length)} hint="all-time entries" />
         </div>
 
-        <div className="expense-layout">
+        <div className="expense-layout expense-layout-stacked">
           <section className="panel">
             <h2 className="panel-title">Add expense</h2>
 
             {formError && <div className="auth-error">{formError}</div>}
 
             <form className="expense-form" onSubmit={handleSubmit} noValidate>
-              <div className="field">
-                <label htmlFor="amount">Amount ({currency})</label>
-                <input
-                  id="amount"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  inputMode="decimal"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="field">
-                <label htmlFor="category">Category</label>
-                <select id="category" value={category} onChange={(e) => setCategory(e.target.value)}>
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="field">
+              <div className="field entry-date">
                 <label htmlFor="date">Date</label>
                 <input
                   id="date"
@@ -159,20 +177,91 @@ function Expenses() {
                 />
               </div>
 
-              <div className="field">
-                <label htmlFor="description">Description (optional)</label>
-                <input
-                  id="description"
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Lunch with the team"
-                />
+              <div className="entry-rows">
+                {entries.map((entry, index) => (
+                  <fieldset className="entry-row" key={entry.key}>
+                    <legend className="sr-only">Entry {index + 1}</legend>
+
+                    <div className="field">
+                      {/* Labelling every row would repeat the same three words down
+                          the form, so later rows keep their labels for screen
+                          readers only — until the fields stack and need them back. */}
+                      <label htmlFor={`amount-${entry.key}`} className={labelClass(index)}>
+                        Amount ({currency})
+                      </label>
+                      <input
+                        id={`amount-${entry.key}`}
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        inputMode="decimal"
+                        value={entry.amount}
+                        onChange={(e) => updateEntry(entry.key, { amount: e.target.value })}
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div className="field">
+                      <label htmlFor={`category-${entry.key}`} className={labelClass(index)}>
+                        Category
+                      </label>
+                      <select
+                        id={`category-${entry.key}`}
+                        value={entry.category}
+                        onChange={(e) => updateEntry(entry.key, { category: e.target.value })}
+                      >
+                        {CATEGORIES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="field">
+                      <label htmlFor={`description-${entry.key}`} className={labelClass(index)}>
+                        Description (optional)
+                      </label>
+                      <input
+                        id={`description-${entry.key}`}
+                        type="text"
+                        value={entry.description}
+                        onChange={(e) => updateEntry(entry.key, { description: e.target.value })}
+                        placeholder="Lunch with the team"
+                      />
+                    </div>
+
+                    {/* Held open even with nothing in it, so the fields above stay
+                        in line whether or not a row can be removed. */}
+                    <div className="entry-row-action">
+                      {entries.length > 1 && (
+                        <button
+                          type="button"
+                          className="expense-delete"
+                          onClick={() => removeEntry(entry.key)}
+                          aria-label={`Remove entry ${index + 1}`}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  </fieldset>
+                ))}
               </div>
 
-              <button type="submit" className="btn btn-primary" disabled={submitting}>
-                {submitting ? 'Adding…' : 'Add expense'}
-              </button>
+              <div className="entry-actions">
+                <button
+                  type="button"
+                  className="btn btn-ghost entry-add"
+                  onClick={() => setEntries((prev) => [...prev, blankEntry()])}
+                >
+                  + Add another entry
+                </button>
+
+                <button type="submit" className="btn btn-primary entry-submit" disabled={submitting}>
+                  {submitting ? 'Adding…' : entries.length > 1 ? `Add ${entries.length} expenses` : 'Add expense'}
+                </button>
+              </div>
             </form>
           </section>
 
@@ -198,6 +287,11 @@ function Expenses() {
                         <li className="expense-row" key={e.id}>
                           <div className="expense-info">
                             <span className="expense-category">{e.category}</span>
+                            {e.recurring && (
+                              <span className="expense-fixed" title="Added automatically by a fixed expense">
+                                Fixed
+                              </span>
+                            )}
                             {e.description && <span className="expense-desc">{e.description}</span>}
                           </div>
                           <div className="expense-actions">
