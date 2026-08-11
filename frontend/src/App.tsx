@@ -4,6 +4,7 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Expenses from './pages/Expenses'
+import Fixed from './pages/Fixed'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './lib/auth'
 import { CurrencyProvider } from './lib/currency'
@@ -27,6 +28,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Expenses />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/fixed"
+            element={
+              <ProtectedRoute>
+                <Fixed />
               </ProtectedRoute>
             }
           />

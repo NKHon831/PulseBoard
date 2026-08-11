@@ -22,6 +22,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -134,6 +136,43 @@ class ExpenseServiceTest {
         assertThat(stored.getRateSnapshot())
                 .containsEntry(CurrencyCode.JPY, CurrencyCode.JPY.getFallbackRate());
         assertThat(stored.getDescription()).isNull();
+    }
+
+    @Test
+    void savesAWholeBatchAtOnceAndReadsEachEntryBackInItsOwnCurrency() {
+        List<ExpenseRequest> requests = List.of(
+                new ExpenseRequest(new BigDecimal("12.50"), CurrencyCode.MYR, "Breakfast", null, LocalDate.now()),
+                new ExpenseRequest(new BigDecimal("4000"), CurrencyCode.JPY, "Lunch", "Ramen", LocalDate.now()),
+                new ExpenseRequest(new BigDecimal("30"), null, "Dinner", null, LocalDate.now()));
+
+        List<ExpenseResponse> responses = service.createAll(UUID.randomUUID(), requests);
+
+        assertThat(responses).extracting(ExpenseResponse::amount)
+                .satisfiesExactly(
+                        first -> assertThat(first).isEqualByComparingTo("12.50"),
+                        second -> assertThat(second).isEqualByComparingTo("4000"),
+                        third -> assertThat(third).isEqualByComparingTo("30"));
+        // An omitted currency means the base currency, as it does for a single entry.
+        assertThat(responses).extracting(ExpenseResponse::currency).containsExactly("MYR", "JPY", "MYR");
+
+        ArgumentCaptor<List<Expense>> saved = ArgumentCaptor.captor();
+        verify(expenseRepository).saveAll(saved.capture());
+        assertThat(saved.getValue()).hasSize(3);
+    }
+
+    @Test
+    void rejectsAWholeBatchIfOneEntryIsNotAcceptable() {
+        List<ExpenseRequest> requests = List.of(
+                new ExpenseRequest(new BigDecimal("12.50"), CurrencyCode.MYR, "Breakfast", null, LocalDate.now()),
+                new ExpenseRequest(
+                        new BigDecimal("10"), CurrencyCode.MYR, "Lunch", null,
+                        LocalDate.now(ZoneOffset.UTC).plusDays(2)));
+
+        assertThatThrownBy(() -> service.createAll(UUID.randomUUID(), requests))
+                .isInstanceOf(BadRequestException.class);
+
+        // Nothing is written, so a rejected line cannot leave a half-entered day.
+        verify(expenseRepository, never()).saveAll(anyList());
     }
 
     @Test

@@ -17,7 +17,9 @@ public record ExpenseResponse(
         String currency,
         String category,
         String description,
-        LocalDate expenseDate) {
+        LocalDate expenseDate,
+        /** True when a fixed-expense template put this row here rather than the user. */
+        boolean recurring) {
 
     public static ExpenseResponse from(Expense expense, CurrencyCode displayCurrency, BigDecimal displayAmount) {
         return new ExpenseResponse(
@@ -26,6 +28,7 @@ public record ExpenseResponse(
                 displayCurrency.name(),
                 expense.getCategory(),
                 expense.getDescription(),
-                expense.getExpenseDate());
+                expense.getExpenseDate(),
+                expense.getRecurringId() != null);
     }
 }

@@ -134,6 +134,152 @@
   font-size: 14px;
 }
 
+/* The add form spans the page so its fields can sit side by side, with the
+   expense list below it rather than alongside. */
+.expense-layout-stacked {
+  grid-template-columns: 1fr;
+}
+
+.entry-date {
+  max-width: 200px;
+}
+
+/* Multi-entry form: one row per line being keyed in */
+.entry-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.entry-row {
+  --entry-control-height: 46px;
+
+  display: grid;
+  /* Amount and category only need to fit their content; the description takes
+     the rest, and the last column holds the remove button. */
+  grid-template-columns: minmax(0, 160px) minmax(0, 170px) minmax(0, 1fr) 26px;
+  gap: 12px;
+  align-items: end;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+/* A select is a few pixels shorter than a text input at the same padding, which
+   shows as soon as they sit next to each other. */
+.entry-row .field input,
+.entry-row .field select {
+  height: var(--entry-control-height);
+}
+
+.entry-row-action {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  /* Matched to the controls so the button sits on their centre line. */
+  height: var(--entry-control-height);
+}
+
+/* Repeated labels are kept for screen readers but taken out of the layout, so
+   the fields read as columns under the first row's headings. */
+.field-label-repeat {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.entry-add {
+  font-size: 14px;
+}
+
+.entry-submit {
+  margin-left: auto;
+}
+
+/* Stacked on narrow screens, where every field needs its own visible label. */
+@media (max-width: 800px) {
+  .entry-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .entry-row-action {
+    height: auto;
+  }
+
+  .field-label-repeat {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+  }
+
+  .entry-submit {
+    margin-left: 0;
+  }
+}
+
+.expense-fixed {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+/* Fixed expenses */
+.fixed-row {
+  flex-wrap: wrap;
+}
+
+.fixed-row.is-paused {
+  opacity: 0.6;
+}
+
+.fixed-frequency {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-h);
+  white-space: nowrap;
+}
+
+.fixed-since,
+.fixed-paused {
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.fixed-paused {
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+
+.fixed-action {
+  font-size: 13px;
+  padding: 6px 12px;
+}
+
 .expense-groups {
   display: flex;
   flex-direction: column;
